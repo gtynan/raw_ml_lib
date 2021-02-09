@@ -11,3 +11,9 @@ def dummy_X() -> np.ndarray:
 @pytest.fixture(scope='session')
 def dummy_y() -> np.ndarray:
     return random_settings.random((10, ))
+
+
+@pytest.fixture(scope='session')
+def dummy_cat_y() -> np.ndarray:
+    # random number 0, 1 or 2
+    return np.random.randint(3, size=(10, ))
