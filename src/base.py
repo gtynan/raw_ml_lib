@@ -64,3 +64,7 @@ class SupervisedModel(BaseModel):
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         super().fit(X)
         self._y = y
+
+    def predict(self, X: np.ndarray, y: np.ndarray) -> np.ndarray:
+        raise NotImplementedError
+    
