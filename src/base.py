@@ -39,7 +39,7 @@ class BaseModel(AbstractBaseModel):
         self._X = value
 
     def fit(self, X: np.ndarray) -> None:
-        self._X = X
+        self.X = X
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         raise NotImplementedError
@@ -63,4 +63,4 @@ class SupervisedModel(BaseModel):
     
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         super().fit(X)
-        self._y = y
+        self.y = y
