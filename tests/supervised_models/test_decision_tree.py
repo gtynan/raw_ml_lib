@@ -1,22 +1,25 @@
 import pytest
 import numpy as np
+from sklearn.tree import DecisionTreeClassifier as SKDecisionTreeClassifier
 
 from src.supervised_models.decision_tree import DecisionTreeClassifier
 
 class TestDecisionTreeClassifier:
 
-    @pytest.fixture(scope='function')
-    def model(self):
+    @pytest.fixture(scope="function")
+    def model(self) -> DecisionTreeClassifier:
         return DecisionTreeClassifier()
 
-    @pytest.mark.parametrize('arr, res', [([1, 1, 1], 0), ([1, 1, 1, 0, 0, 0], 1)])
-    def test_entropy(self, arr, res):
-        assert DecisionTreeClassifier._entropy(arr) == res
+    def test_fit(self, model, dummy_cat_X, dummy_cat_y):
+        model.fit(dummy_cat_X, dummy_cat_y)
+        # ensure decision tree created
+        assert isinstance(model.tree, dict)
 
+    def test_predict(self, model, dummy_cat_X, dummy_cat_y):
+        y = SKDecisionTreeClassifier(criterion="entropy")\
+                                        .fit(dummy_cat_X, dummy_cat_y)\
+                                        .predict(dummy_cat_X)
 
-    @pytest.mark.parametrize('arr, y, res', [
-        (np.array([0,0,1,1,1,1,2,2,2,2,2,2]), np.array([0,0,1,1,1,1,1,1,0,0,0,0]), 0.541),
-        (np.array([0,0,1,1,1,1,2,2,3,3,3,3]), np.array([0,1,0,1,0,1,0,1,0,1,0,1]), 0),
-    ])
-    def test_information_gain(self, arr, y, res):
-        pytest.approx(DecisionTreeClassifier._information_gain(arr, y), res)
+        model.fit(dummy_cat_X, dummy_cat_y)
+        y_hat = model.predict(dummy_cat_X) 
+        np.testing.assert_array_equal(y, y_hat)

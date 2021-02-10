@@ -1,47 +1,87 @@
+from typing import Any, List, Optional
 import numpy as np
+from scipy.stats import mode
 
 from src.base import SupervisedModel
+from src.entropy import get_max_information_gain_col
 
 
 class DecisionTreeClassifier(SupervisedModel):
-    
-    @staticmethod
-    def _entropy(y: np.ndarray) -> float:
-        """Entropy provides a measure of impurity
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> None:
+        """Create decison tree from X and y values
 
         Args:
-            y (np.ndarray): array of classes
-
-        Returns:
-            float: entropy
+            X (np.ndarray): independent variables
+            y (np.ndarray): dependent varaible
         """
-        n = len(y)
-
-        # count occurances of each unique label
-        _, label_counts = np.unique(y, return_counts=True)
-        
-        # relative frequency of each unique label
-        p = label_counts / n
-        return -(p * np.log2(p)).sum()
+        super().fit(X, y)
+        self.tree = DecisionTreeClassifier._id3(X, y)
 
     @staticmethod
-    def _information_gain(arr: np.ndarray, y: np.ndarray) -> float:
-        """Popular information theoretic approach for selecting features in decision trees, based on entropy.
+    def _id3(X: np.ndarray, y: np.ndarray) -> dict:
+        """Popular algorithm which repeatedly builds a decision tree from the top down (Quinlan, 1986)
 
         Args:
-            arr (np.ndarray): array of labels
-            y (np.ndarray): array of classes
+            X (np.ndarray): independent variables
+            y (np.ndarray): dependent varaible
 
         Returns:
-            float: information gain
+            dict: decision tree
         """
-        n = len(arr)
+        col_id = get_max_information_gain_col(X, y)
+        # root node
+        tree = {col_id: {}}
+                
+        # unique values in said column
+        col_values = np.unique(X[:, col_id])
 
-        orig_entropy = DecisionTreeClassifier._entropy(y)
-        after_split_entropy = 0.0
+        for value in col_values:
+            # rows where values match specific value
+            mask = X[:, col_id] == value
+            sub_X, sub_y = X[mask], y[mask]
 
-        # get after split entropy for each label
-        for label, count in zip(np.unique(arr, return_counts=True)):
-            after_split_entropy += (count/n)*DecisionTreeClassifier._entropy(y[arr==label])
+            y_values, y_counts = np.unique(sub_y, return_counts=True)
 
-        return orig_entropy - after_split_entropy
+            # if only 1 y value associated with current X value define it as the answer
+            if len(y_counts) == 1:
+                tree[col_id][value] = y_values[0]
+
+            # identical rows with different labels return mode
+            elif (sub_X == sub_X[0, :]).all() and ~(sub_y == sub_y[0]).all():
+                tree[col_id][value] = mode(y_values).mode[0]
+
+            else:
+                tree[col_id][value] = DecisionTreeClassifier._id3(sub_X, sub_y)
+        return tree
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict dependent values for X
+
+        Args:
+            X (np.ndarray): independent variables
+
+        Returns:
+            np.ndarray: prediction
+        """
+        if X.ndim > 1:
+            return np.apply_along_axis(DecisionTreeClassifier._predict,
+                                        axis=1,
+                                        arr=X,
+                                        tree=self.tree).ravel()
+        return DecisionTreeClassifier._predict(X, self.tree)
+
+    @staticmethod
+    def _predict(X: np.ndarray, tree: dict) -> Optional[Any]:
+        """Recursively calls itself to work through tree until answer obtained if one exists
+        """
+        assert X.ndim == 1
+
+        for col, val in tree.items():
+            # x value for associated column
+            x_val = X[col]
+            if isinstance(val , dict):
+                if isinstance(tree[col][x_val], dict):
+                    return DecisionTreeClassifier._predict(X, tree[col][x_val])
+                return tree[col][x_val]
+            return tree[col]
